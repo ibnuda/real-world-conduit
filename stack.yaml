@@ -1,0 +1,11 @@
+resolver: lts-11.15
+
+packages:
+- .
+
+extra-deps:
+- servant-auth-0.3.2.0
+- servant-auth-server-0.4.0.0
+- servant-auth-client-0.3.3.0
+- git: https://github.com/bitemyapp/esqueleto
+  commit: b81e0d951e510ebffca03c5a58658ad884cc6fbd

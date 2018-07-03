@@ -20,6 +20,8 @@ library
                      , Types
                      , Conf
                      , Model
+                     , API.User
+                     , RealWorld
   other-modules:       Lib.Prelude
   build-depends:       base >= 4.7 && < 5
                      , protolude

@@ -5,7 +5,7 @@
 {-# LANGUAGE TemplateHaskell #-}
 module Types where
 
-import           Protolude
+import           Lib.Prelude
 
 import           Data.Aeson
 import           Data.Aeson.Casing

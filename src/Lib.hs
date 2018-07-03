@@ -5,4 +5,4 @@ module Lib
 import           Lib.Prelude
 
 someFunc :: IO ()
-someFunc = putStrLn ("someFunc" :: Text)
+someFunc = putText "someFunc"

@@ -1,7 +1,7 @@
 module Main where
 
-import Protolude
-import Lib
+import           RealWorld
+import           Protolude
 
 main :: IO ()
-main = someFunc
+main = running

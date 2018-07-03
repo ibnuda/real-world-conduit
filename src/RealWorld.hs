@@ -19,10 +19,16 @@ import           Conf
 import           Model
 
 import           API.User
+import           API.Articles
+import           API.Profile
+import           API.Tags
 
 type ConduitAPI auth =
-  "api" :> (Servant.Auth.Server.Auth auth User :> UserInformationAPI)
+  "api" :> (Auth auth User :> UserInformationAPI)
    :<|> "api" :> UserAdministrationAPI
+   :<|> "api" :> (Auth auth User :> UserProfileAPI)
+   :<|> "api" :> (Auth auth User :> ArticlesAPI)
+   :<|> "api" :> TagsAPI
    :<|> Raw
 
 conduitProxy :: Proxy (ConduitAPI '[JWT])
@@ -32,6 +38,9 @@ conduitServer :: Configuration -> Server (ConduitAPI auth)
 conduitServer conf =
   userInformationServer conf
   :<|> userAdministrationServer conf
+  :<|> userProfileServer conf
+  :<|> articlesServer conf
+  :<|> tagsServer conf
   :<|> serveDirectoryFileServer "front"
 
 connstring :: ByteString

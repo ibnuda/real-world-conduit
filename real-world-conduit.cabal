@@ -16,11 +16,13 @@ cabal-version:       >=1.10
 library
   hs-source-dirs:      src
   ghc-options:         -Wall
-  exposed-modules:     Lib
-                     , Types
+  exposed-modules:     Types
                      , Conf
                      , Model
                      , API.User
+                     , API.Articles
+                     , API.Profile
+                     , API.Tags
                      , RealWorld
   other-modules:       Lib.Prelude
   build-depends:       base >= 4.7 && < 5

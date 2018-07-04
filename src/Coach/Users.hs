@@ -8,7 +8,7 @@ import           Crypto.BCrypt
 import           Data.ByteString.Char8 (pack)
 import           Data.ByteString.Lazy  as BL (toStrict)
 import           Data.Text             (unpack)
-import           Database.Esqueleto
+import           Database.Esqueleto    hiding (isNothing)
 import           Servant
 import           Servant.Auth.Server
 
@@ -47,7 +47,7 @@ postRegistrationCoach (RequestRegistration reqreg) = do
       existings <- runDb (selectUserByUsernameEmail username email)
       case existings of
         [] -> return ()
-        _ -> throwError err422
+        _  -> throwError err409 { errBody = "User already exists."}
     generatePassword password = do
       mpass <-
         hashPasswordUsingPolicy
@@ -56,16 +56,46 @@ postRegistrationCoach (RequestRegistration reqreg) = do
       case mpass of
         Nothing -> generatePassword password
         Just pa -> return (decodeUtf8 pa)
-    generateToken user = do
-      jws <- asks configurationJWTSettings
-      etoken <- liftIO $ makeJWT user jws Nothing
-      token <- eitherToCoach etoken (decodeUtf8 . BL.toStrict) err500
-      return token
-    eitherToCoach (Left x) _ onFail = throwError $ onFail {errBody = show x}
-    eitherToCoach (Right v) onSuccess _ = return $ onSuccess v
+
+generateToken ::
+     MonadIO m
+  => User
+  -> CoachT m Text
+generateToken user = do
+  jws <- asks configurationJWTSettings
+  etoken <- liftIO $ makeJWT user jws Nothing
+  token <- eitherToCoach etoken (decodeUtf8 . BL.toStrict) err500
+  return token
+
+eitherToCoach ::
+     (Show a1, MonadError ServantErr m)
+  => Either a1 t
+  -> (t -> a2)
+  -> ServantErr
+  -> m a2
+eitherToCoach (Left x) _ onFail     = throwError $ onFail {errBody = show x}
+eitherToCoach (Right v) onSuccess _ = return $ onSuccess v
 
 postLoginCoach :: MonadIO m => RequestLogin -> CoachT m ResponseUser
-postLoginCoach (RequestLogin (RequestLoginBody email password)) = panic ""
+postLoginCoach (RequestLogin (RequestLoginBody email password)) = do
+  (Entity _ user) <- notFoundIfNothing =<< runDb (getBy (UniqueEmail email))
+  unless
+    (validatePassword
+       ((pack . unpack) (userPassword user))
+       ((pack . unpack) (password))) $
+    throwError err401 {errBody = "No such thing."}
+  token <- generateToken user
+  return $
+    ResponseUser $
+    ResponseUserBody
+      (userEmail user)
+      (Just token)
+      (userUsername user)
+      (userBio user)
+      (userImage user)
+  where
+    notFoundIfNothing Nothing = throwError err401 {errBody = "No such thing."}
+    notFoundIfNothing (Just x) = return x
 
 getUserInformationCoach :: MonadIO m => AuthResult User -> CoachT m ResponseUser
 getUserInformationCoach (Authenticated user) = panic ""
@@ -74,4 +104,3 @@ getUserInformationCoach _                    = throwError err401
 putUserInformationCoach :: MonadIO m => AuthResult User -> RequestUpdateUser -> CoachT m ResponseUser
 putUserInformationCoach (Authenticated user) (RequestUpdateUser reqbody) = panic ""
 putUserInformationCoach _ _ = throwError err401
-

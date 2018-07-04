@@ -13,9 +13,11 @@ import           Lib.Prelude
 import           Servant
 import           Servant.Auth.Server
 
+import           Conf
 import           Model
 import           Types
-import           Conf
+
+import           Coach.Users
 
 type UserInformationAPI =
   "user"
@@ -49,7 +51,7 @@ type UserAdministrationAPI =
     :> Post '[ JSON] ResponseUser
 
 userAdministrationApi :: MonadIO m => ServerT UserAdministrationAPI (CoachT m)
-userAdministrationApi = panic ""
+userAdministrationApi = postRegistrationCoach :<|> postLoginCoach
 
 userAdministrationProxy :: Proxy UserAdministrationAPI
 userAdministrationProxy = Proxy

@@ -24,6 +24,7 @@ library
                      , API.Profile
                      , API.Tags
                      , Que.Tags
+                     , Que.Users
                      , Coach.Tags
                      , RealWorld
                      , DevelMain

@@ -28,7 +28,8 @@ type UserInformationAPI =
 
 userInformationApi ::
      MonadIO m => AuthResult User -> ServerT UserInformationAPI (CoachT m)
-userInformationApi authres = panic ""
+userInformationApi authres =
+  getUserInformationCoach authres :<|> putUserInformationCoach authres
 
 userInformationProxy :: Proxy UserInformationAPI
 userInformationProxy = Proxy

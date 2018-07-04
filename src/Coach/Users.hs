@@ -15,6 +15,7 @@ import           Servant.Auth.Server
 import           Conf
 import           Model
 import           Types
+import           Util
 
 import           Que.Users
 
@@ -48,14 +49,6 @@ postRegistrationCoach (RequestRegistration reqreg) = do
       case existings of
         [] -> return ()
         _  -> throwError err409 { errBody = "User already exists."}
-    generatePassword password = do
-      mpass <-
-        hashPasswordUsingPolicy
-          slowerBcryptHashingPolicy
-          (pack $ unpack password)
-      case mpass of
-        Nothing -> generatePassword password
-        Just pa -> return (decodeUtf8 pa)
 
 generateToken ::
      MonadIO m
@@ -98,9 +91,51 @@ postLoginCoach (RequestLogin (RequestLoginBody email password)) = do
     notFoundIfNothing (Just x) = return x
 
 getUserInformationCoach :: MonadIO m => AuthResult User -> CoachT m ResponseUser
-getUserInformationCoach (Authenticated user) = panic ""
+getUserInformationCoach (Authenticated user) = do
+  token <- generateToken user
+  return $
+    ResponseUser $
+    ResponseUserBody
+      (userEmail user)
+      (Just token)
+      (userUsername user)
+      (userBio user)
+      (userImage user)
 getUserInformationCoach _                    = throwError err401
 
 putUserInformationCoach :: MonadIO m => AuthResult User -> RequestUpdateUser -> CoachT m ResponseUser
-putUserInformationCoach (Authenticated user) (RequestUpdateUser reqbody) = panic ""
+putUserInformationCoach (Authenticated _) (RequestUpdateUser (RequestUpdateUserBody Nothing Nothing Nothing Nothing Nothing)) =
+  throwError err422 { errBody = "What are you going to update?"}
+putUserInformationCoach (Authenticated user) (RequestUpdateUser requpdate) = do
+  let newUsernameEmail old (Just x) =
+        if old == x
+          then Nothing
+          else Just x
+      newUsernameEmail _ Nothing = Nothing
+      perhapsnewusername =
+        newUsernameEmail (userUsername user) (requpdtuserbodyUsername requpdate)
+      perhapsnewemail =
+        newUsernameEmail (userEmail user) (requpdtuserbodyEmail requpdate)
+  existings <-
+    runDb $ selectUserByMaybeUsernameEmail perhapsnewusername perhapsnewemail
+  unless (null existings) $ throwError err409 {errBody = "Already used."}
+  runDb $
+    updateUser
+      (userUsername user)
+      (requpdtuserbodyEmail requpdate)
+      (requpdtuserbodyUsername requpdate)
+      (requpdtuserbodyPassword requpdate)
+      (requpdtuserbodyImage requpdate)
+      (requpdtuserbodyBio requpdate)
+  (Just (Entity _ u)) <-
+    runDb $ getBy $ UniqueEmail $ fromMaybe (userEmail user) perhapsnewemail
+  token <- generateToken u
+  return $
+    ResponseUser $
+    ResponseUserBody
+      (userEmail u)
+      (Just token)
+      (userUsername u)
+      (userBio u)
+      (userImage u)
 putUserInformationCoach _ _ = throwError err401

@@ -50,7 +50,7 @@ update = do
         readStore doneStore >>= start
     start :: MVar () -> IO ThreadId
     start done = do
-      (port, app) <- startServe
+      (port, app) <- startDevel
       forkFinally
         (runSettings (setPort port defaultSettings) app)
         (\_ -> putMVar done () >> stop)

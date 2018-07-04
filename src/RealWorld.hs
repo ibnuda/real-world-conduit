@@ -64,8 +64,8 @@ running = do
 stop :: IO ()
 stop = return ()
 
-startServe :: IO (Port, Application)
-startServe = do
+startDevel :: IO (Port, Application)
+startDevel = do
   jwk <- generateKey
   pool <- runStderrLoggingT (createPostgresqlPool connstring 10)
   let jws = defaultJWTSettings jwk

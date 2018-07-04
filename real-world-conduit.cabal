@@ -23,6 +23,8 @@ library
                      , API.Articles
                      , API.Profile
                      , API.Tags
+                     , Que.Tags
+                     , Coach.Tags
                      , RealWorld
                      , DevelMain
   other-modules:       Lib.Prelude

@@ -19,6 +19,8 @@ import           Database.Persist.Sql
 import           Database.Persist.TH
 import           Servant.Auth.Server
 
+import Conf
+
 share
   [ mkPersist sqlSettings
   , mkDeleteCascade sqlSettings
@@ -83,3 +85,11 @@ instance FromJWT User
 
 doMigration :: SqlPersistT IO ()
 doMigration = runMigration migrateEverything
+
+runDb ::
+     (MonadIO m, MonadReader Configuration m)
+  => SqlPersistT IO b
+  -> m b
+runDb q = do
+  pool <- asks configurationPool
+  liftIO $ runSqlPool q pool

@@ -6,24 +6,21 @@
 {-# LANGUAGE RecordWildCards       #-}
 {-# LANGUAGE TemplateHaskell       #-}
 {-# LANGUAGE TypeOperators         #-}
-module API.Tags where
+module Coach.Tags where
 
 import           Protolude
 
-import           Servant
+import           Database.Esqueleto
 
 import           Conf
+import           Model
 import           Types
 
-import           Coach.Tags
+import           Que.Tags
 
-type TagsAPI = "tags" :> Get '[ JSON] ResponseTags
-
-tagsApi :: MonadIO m => ServerT TagsAPI (CoachT m)
-tagsApi = getTagsCoach
-
-tagsProxy :: Proxy TagsAPI
-tagsProxy = Proxy
-
-tagsServer :: Configuration -> Server TagsAPI
-tagsServer conf = hoistServer tagsProxy (coachToHandler conf) tagsApi
+getTagsCoach :: MonadIO m => CoachT m ResponseTags
+getTagsCoach = do
+  tags <- runDb selectTags
+  return (resptags tags)
+  where
+    resptags xs = ResponseTags $ map (tagName . entityVal) xs

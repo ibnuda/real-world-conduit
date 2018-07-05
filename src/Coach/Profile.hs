@@ -7,7 +7,6 @@ import           Lib.Prelude
 import           Database.Esqueleto  hiding (isNothing)
 import           Servant
 import           Servant.Auth.Server
-import           Servant.Server
 
 import           Conf
 import           Model
@@ -46,9 +45,11 @@ postUserFollowCoach ::
      MonadIO m => AuthResult User -> Text -> CoachT m NoContent
 postUserFollowCoach (Authenticated user) profilename = do
   muser <- runDb $ getBy $ UniqueUsername profilename
+  when (isNothing muser) $
+    throwError err404 {errBody = "There are no such user."}
   follows <- runDb $ selectFollows (userUsername user) profilename
-  unless (null follows || isNothing muser) $
-    throwError err409 {errBody = "Already followed that profile"}
+  unless (null follows) $
+    throwError err409 {errBody = "Already followed that profile."}
   runDb $ insertFollows (userUsername user) profilename
   return NoContent
 postUserFollowCoach _ _                              = throwError err401
@@ -56,8 +57,10 @@ postUserFollowCoach _ _                              = throwError err401
 deleteUserFollowCoach :: MonadIO m => AuthResult User -> Text -> CoachT m NoContent
 deleteUserFollowCoach (Authenticated user) profilename = do
   muser <- runDb $ getBy $ UniqueUsername profilename
+  when (isNothing muser) $
+    throwError err404 {errBody = "There are no such user."}
   follows <- runDb $ selectFollows (userUsername user) profilename
-  when (null follows || isNothing muser) $
+  when (null follows) $
     throwError err404 {errBody = "You are not following that profile"}
   runDb $ deleteFollows (userUsername user) profilename
   return NoContent

@@ -11,6 +11,7 @@ import           Servant.Auth.Server
 import           Conf
 import           Model
 import           Types
+import           Util
 
 import           Que.Users
 
@@ -37,9 +38,6 @@ getUserProfileCoach authres profilename = do
           (userBio user)
           (userImage user)
           follow
-  where
-    authresToMaybe (Authenticated x) = Just x
-    authresToMaybe _                 = Nothing
 
 postUserFollowCoach ::
      MonadIO m => AuthResult User -> Text -> CoachT m NoContent

@@ -26,9 +26,11 @@ library
                      , API.Tags
                      , Que.Tags
                      , Que.Users
+                     , Que.Articles
                      , Coach.Tags
                      , Coach.Users
                      , Coach.Profile
+                     , Coach.Articles
                      , RealWorld
                      , DevelMain
   other-modules:       Lib.Prelude

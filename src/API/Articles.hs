@@ -8,9 +8,11 @@ import           Lib.Prelude
 import           Servant
 import           Servant.Auth.Server
 
-import           Types
-import           Model
 import           Conf
+import           Model
+import           Types
+
+import           Coach.Articles
 
 type ArticlesAPI =
   "articles"
@@ -65,7 +67,11 @@ articlesProxy :: Proxy ArticlesAPI
 articlesProxy = Proxy
 
 articlesApi :: MonadIO m => AuthResult User -> ServerT ArticlesAPI (CoachT m)
-articlesApi authres = panic ""
+articlesApi authres =
+  getArticlesCoach authres
+  :<|> getArticlesFeed authres
+  :<|> getArticleSlugCoach authres
+  :<|> panic ""
 
 articlesServer :: Configuration -> AuthResult User -> Server ArticlesAPI
 articlesServer conf authres =

@@ -10,9 +10,11 @@ import           Lib.Prelude
 import           Servant
 import           Servant.Auth.Server
 
-import           Types
-import           Model
 import           Conf
+import           Model
+import           Types
+
+import           Coach.Profile
 
 type UserProfileAPI =
   "profiles"
@@ -28,7 +30,7 @@ type UserProfileAPI =
     :> DeleteNoContent '[ JSON] NoContent
 
 userProfileApi :: MonadIO m => AuthResult User -> ServerT UserProfileAPI (CoachT m)
-userProfileApi authres = panic ""
+userProfileApi authres = getUserProfileCoach authres :<|> panic ""
 
 userProfileProxy :: Proxy UserProfileAPI
 userProfileProxy = Proxy

@@ -27,6 +27,8 @@ library
                      , Que.Tags
                      , Que.Users
                      , Coach.Tags
+                     , Coach.Users
+                     , Coach.Profile
                      , RealWorld
                      , DevelMain
   other-modules:       Lib.Prelude

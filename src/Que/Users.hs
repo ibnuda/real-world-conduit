@@ -14,6 +14,39 @@ import           Database.Esqueleto
 import           Model
 import           Util
 
+selectFollowsByUsernameAndProfilename ::
+     ( MonadIO m
+     , BackendCompatible SqlBackend backend
+     , PersistQueryRead backend
+     , PersistUniqueRead backend
+     )
+  => Maybe Text
+  -> Text
+  -> ReaderT backend m [(Entity User, Value Bool)]
+selectFollowsByUsernameAndProfilename (Just username) profilename = do
+  select $
+    from $ \profile -> do
+      let isfollowing =
+            case_
+              [ when_
+                  (exists $
+                   from $ \(user, follows) -> do
+                     where_ (follows ^. FollowFollowerId ==. user ^. UserId)
+                     where_ (follows ^. FollowAuthorId ==. profile ^. UserId)
+                     where_ (user ^. UserUsername ==. val username)
+                     where_ (profile ^. UserUsername ==. val profilename))
+                  then_ $ val True
+              ]
+              (else_ $ val False)
+      where_ (profile ^. UserUsername ==. val profilename)
+      return (profile, isfollowing)
+selectFollowsByUsernameAndProfilename Nothing profilename = do
+  select $
+    from $ \profile -> do
+      where_ (profile ^. UserUsername ==. val profilename)
+      return (profile, val False)
+
+
 selectUserByUsernameEmail ::
      ( PersistUniqueRead backend
      , PersistQueryRead backend

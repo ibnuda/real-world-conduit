@@ -46,6 +46,59 @@ selectFollowsByUsernameAndProfilename Nothing profilename = do
       where_ (profile ^. UserUsername ==. val profilename)
       return (profile, val False)
 
+selectFollows ::
+     ( PersistUniqueRead backend
+     , PersistQueryRead backend
+     , BackendCompatible SqlBackend backend
+     , MonadIO m
+     )
+  => Text
+  -> Text
+  -> ReaderT backend m [Entity Follow]
+selectFollows username profilename = do
+  select $
+    from $ \(user `InnerJoin` follow `InnerJoin` profile) -> do
+      on (follow ^. FollowAuthorId ==. profile ^. UserId)
+      on (follow ^. FollowFollowerId ==. user ^. UserId)
+      where_ (user ^. UserUsername ==. val username)
+      where_ (profile ^. UserUsername ==. val profilename)
+      return follow
+
+insertFollows ::
+     ( PersistUniqueWrite backend
+     , PersistQueryWrite backend
+     , BackendCompatible SqlBackend backend
+     , MonadIO m
+     )
+  => Text
+  -> Text
+  -> ReaderT backend m ()
+insertFollows username profilename = do
+  insertSelect $
+    from $ \(user, profile) -> do
+      where_ (user ^. UserUsername ==. val username)
+      where_ (profile ^. UserUsername ==. val profilename)
+      return $ Follow <# (user ^. UserId) <&> (profile ^. UserId)
+
+deleteFollows ::
+     ( PersistUniqueWrite backend
+     , PersistQueryWrite backend
+     , BackendCompatible SqlBackend backend
+     , MonadIO m
+     )
+  => Text
+  -> Text
+  -> ReaderT backend m ()
+deleteFollows username profilename = do
+  delete $
+    from $ \follows -> do
+      where_ $
+        exists $
+        from $ \(user, profile) -> do
+          where_ (follows ^. FollowAuthorId ==. profile ^. UserId)
+          where_ (follows ^. FollowFollowerId ==. user ^. UserId)
+          where_ (user ^. UserUsername ==. val username)
+          where_ (profile ^. UserUsername ==. val profilename)
 
 selectUserByUsernameEmail ::
      ( PersistUniqueRead backend

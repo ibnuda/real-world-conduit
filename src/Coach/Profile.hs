@@ -5,6 +5,7 @@ module Coach.Profile where
 import           Lib.Prelude
 
 import           Database.Esqueleto  hiding (isNothing)
+import           Servant
 import           Servant.Auth.Server
 import           Servant.Server
 
@@ -39,4 +40,23 @@ getUserProfileCoach authres profilename = do
           follow
   where
     authresToMaybe (Authenticated x) = Just x
-    authresToMaybe _ = Nothing
+    authresToMaybe _                 = Nothing
+
+postUserFollowCoach ::
+     MonadIO m => AuthResult User -> Text -> CoachT m NoContent
+postUserFollowCoach (Authenticated user) profilename = do
+  follows <- runDb $ selectFollows (userUsername user) profilename
+  unless (null follows) $
+    throwError err409 {errBody = "Already followed that profile"}
+  runDb $ insertFollows (userUsername user) profilename
+  return NoContent
+postUserFollowCoach _ _                              = throwError err401
+
+deleteUserFollowCoach :: MonadIO m => AuthResult User -> Text -> CoachT m NoContent
+deleteUserFollowCoach (Authenticated user) profilename = do
+  follows <- runDb $ selectFollows (userUsername user) profilename
+  when (null follows) $
+    throwError err404 {errBody = "You are not following that profile"}
+  runDb $ deleteFollows (userUsername user) profilename
+  return NoContent
+deleteUserFollowCoach _ _                              = throwError err401

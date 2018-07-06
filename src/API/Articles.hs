@@ -71,6 +71,7 @@ articlesApi authres =
   getArticlesCoach authres
   :<|> getArticlesFeed authres
   :<|> getArticleSlugCoach authres
+  :<|> postArticleCreateCoach authres
   :<|> panic ""
 
 articlesServer :: Configuration -> AuthResult User -> Server ArticlesAPI

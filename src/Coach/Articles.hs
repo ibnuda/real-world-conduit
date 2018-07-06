@@ -4,9 +4,11 @@ module Coach.Articles where
 
 import           Lib.Prelude
 
+import qualified Data.Text           as T
 import           Database.Esqueleto  hiding (isNothing)
 import           Servant
 import           Servant.Auth.Server
+import           System.Random
 
 import           Conf
 import           Model
@@ -112,3 +114,36 @@ resultQueryToResponseArticle (entarticle, entauthor, vtags, vfavcounts, vfaving,
         isfavoriting
         favcounts $
       ResponseProfileBody userUsername userBio userImage isfollowing
+
+postArticleCreateCoach ::
+     MonadIO m
+  => AuthResult User
+  -> RequestCreateArticle
+  -> CoachT m ResponseArticle
+postArticleCreateCoach (Authenticated user) (RequestCreateArticle RequestCreateArticleBody {..}) = do
+  randgen <- liftIO newStdGen
+  let appendage = T.pack $ take 10 $ randomRs ('a', 'z') randgen
+      slug = titleDescToSlug reqcrtarticlTitle reqcrtarticlDescription appendage
+  liftIO $ print reqcrtarticlTagList
+  articles <-
+    runDb $ do
+      insertArticle
+        (userUsername user)
+        slug
+        reqcrtarticlTitle
+        reqcrtarticlDescription
+        reqcrtarticlBody
+      upsertMaybeTags reqcrtarticlTagList slug
+      selectArticles
+        (Just $ userUsername user)
+        False
+        (Just slug)
+        Nothing
+        Nothing
+        Nothing
+        1
+        0
+  case articles of
+    []  -> throwError err404 {errBody = "No such article."}
+    x:_ -> return $ ResponseArticle $ resultQueryToResponseArticle x
+postArticleCreateCoach _ _ = throwError err401

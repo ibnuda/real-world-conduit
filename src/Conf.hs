@@ -8,10 +8,12 @@ import           Lib.Prelude
 import           Database.Persist.Postgresql
 import           Servant
 import           Servant.Auth.Server
+import           System.Random
 
 data Configuration = Configuration
   { configurationPool        :: ConnectionPool
   , configurationJWTSettings :: JWTSettings
+  , configurationRandomGen   :: StdGen
   }
 
 newtype CoachT m a = CoachT

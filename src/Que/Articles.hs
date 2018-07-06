@@ -1,9 +1,13 @@
-{-# LANGUAGE FlexibleContexts #-}
+{-# LANGUAGE FlexibleContexts      #-}
+{-# LANGUAGE GADTs                 #-}
+{-# LANGUAGE MultiParamTypeClasses #-}
+{-# LANGUAGE TypeFamilies          #-}
 module Que.Articles where
 
 import           Lib.Prelude                          hiding (from, get, on,
                                                        (<&>))
 
+import           Data.Time
 import           Database.Esqueleto
 import           Database.Esqueleto.Internal.Language
 import           Database.Esqueleto.PostgreSQL
@@ -132,3 +136,52 @@ subscribedAuthorQuery username = do
     where_ $ user ^. UserUsername ==. val username
     return $ author ^. UserId
 
+
+insertArticle ::
+     ( PersistUniqueWrite backend
+     , PersistQueryWrite backend
+     , BackendCompatible SqlBackend backend
+     , MonadIO m
+     )
+  => Text
+  -> Text
+  -> Text
+  -> Text
+  -> Text
+  -> ReaderT backend m ()
+insertArticle username slug title descrip body = do
+  now <- liftIO getCurrentTime
+  insertSelect $
+    from $ \user -> do
+      where_ (user ^. UserUsername ==. val username)
+      return $
+        Article
+        <# val slug
+        <&> (user ^. UserId)
+        <&> val title
+        <&> val descrip
+        <&> val body
+        <&> val now
+        <&> nothing
+
+upsertMaybeTags ::
+     ( BaseBackend backend ~ SqlBackend
+     , PersistQueryWrite backend
+     , BackendCompatible SqlBackend backend
+     , PersistUniqueWrite backend
+     , MonadIO m
+     )
+  => Maybe [Text]
+  -> Text
+  -> ReaderT backend m ()
+upsertMaybeTags Nothing _ = return ()
+upsertMaybeTags (Just tags) slug = do
+  putMany $ map Tag tags
+  insertSelect $
+    from $ \(article, tag) -> do
+      where_ $ article ^. ArticleSlug ==. val slug
+      where_ $ tag ^. TagName `in_` valList tags
+      return $
+        Tagged
+        <# (article ^. ArticleId)
+        <&> (tag ^. TagId)

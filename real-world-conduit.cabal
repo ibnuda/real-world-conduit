@@ -47,6 +47,7 @@ library
                      , persistent >= 2.8
                      , persistent-postgresql >= 2.8
                      , persistent-template >= 2.5
+                     , random >= 1.1
                      , regex-compat >= 0.95
                      , servant-auth
                      , servant-auth-client

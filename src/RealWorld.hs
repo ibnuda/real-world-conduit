@@ -14,6 +14,7 @@ import           Network.Wai.Handler.Warp    (Port)
 import           Servant
 import           Servant.Auth
 import           Servant.Auth.Server
+import           System.Random
 
 import           Conf
 import           Model
@@ -55,9 +56,10 @@ running :: IO ()
 running = do
   jwk <- generateKey
   pool <- runStderrLoggingT (createPostgresqlPool connstring 10)
+  rand <- newStdGen
   let jws = defaultJWTSettings jwk
       cfg = defaultCookieSettings :. jws :. EmptyContext
-      conf = Configuration pool jws
+      conf = Configuration pool jws rand
   runSqlPool doMigration pool
   run 8080 (serveWithContext conduitProxy cfg (conduitServer conf))
 
@@ -68,8 +70,9 @@ startDevel :: IO (Port, Application)
 startDevel = do
   jwk <- generateKey
   pool <- runStderrLoggingT (createPostgresqlPool connstring 10)
+  rand <- newStdGen
   let jws = defaultJWTSettings jwk
       cfg = defaultCookieSettings :. jws :. EmptyContext
-      conf = Configuration pool jws
+      conf = Configuration pool jws rand
   runSqlPool doMigration pool
   return (8080, serveWithContext conduitProxy cfg (conduitServer conf))

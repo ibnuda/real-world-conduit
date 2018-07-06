@@ -124,7 +124,6 @@ postArticleCreateCoach (Authenticated user) (RequestCreateArticle RequestCreateA
   randgen <- liftIO newStdGen
   let appendage = T.pack $ take 10 $ randomRs ('a', 'z') randgen
       slug = titleDescToSlug reqcrtarticlTitle reqcrtarticlDescription appendage
-  liftIO $ print reqcrtarticlTagList
   articles <-
     runDb $ do
       insertArticle
@@ -144,6 +143,6 @@ postArticleCreateCoach (Authenticated user) (RequestCreateArticle RequestCreateA
         1
         0
   case articles of
-    []  -> throwError err404 {errBody = "No such article."}
+    []  -> throwError err410 {errBody = "Should be created, but now is gone."}
     x:_ -> return $ ResponseArticle $ resultQueryToResponseArticle x
 postArticleCreateCoach _ _ = throwError err401

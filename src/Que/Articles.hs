@@ -8,6 +8,8 @@ import           Lib.Prelude                          hiding (from, get, on,
                                                        (<&>))
 
 import           Data.Time
+import qualified Database.Persist as P
+import qualified Database.Persist.Class as PC
 import           Database.Esqueleto
 import           Database.Esqueleto.Internal.Language
 import           Database.Esqueleto.PostgreSQL
@@ -185,3 +187,51 @@ upsertMaybeTags (Just tags) slug = do
         Tagged
         <# (article ^. ArticleId)
         <&> (tag ^. TagId)
+
+isArticleAuthor ::
+     ( PersistUniqueRead backend
+     , PersistQueryRead backend
+     , BackendCompatible SqlBackend backend
+     , MonadIO m
+     )
+  => Text
+  -> Text
+  -> ReaderT backend m [Entity User]
+isArticleAuthor username slug = do
+  select $ from $ \(user `InnerJoin` article) -> do
+    on $ user ^. UserId ==. article ^. ArticleAuthorId
+    where_ $ user ^. UserUsername ==. val username
+    where_ $ article ^. ArticleSlug ==. val slug
+    return user
+
+deleteArticle ::
+     ( BaseBackend backend ~ SqlBackend
+     , PersistQueryWrite backend
+     , PersistUniqueRead backend
+     , MonadIO m
+     )
+  => Text
+  -> ReaderT backend m ()
+deleteArticle slug = PC.deleteCascadeWhere [ArticleSlug P.==. slug]
+
+updateArticle ::
+     MonadIO m
+  => Text
+  -> Maybe Text
+  -> Maybe Text
+  -> Maybe Text
+  -> ReaderT SqlBackend m ()
+updateArticle slug mtitle mdesc mbody = do
+  now <- liftIO getCurrentTime
+  update $ \article -> do
+    set
+      article
+      [ updateByMaybe mtitle article ArticleTitle
+      , updateByMaybe mdesc article ArticleDescription
+      , updateByMaybe mbody article ArticleBody
+      , ArticleUpdatedAt =. val (Just now)
+      ]
+    where_ $ article ^. ArticleSlug ==. val slug
+  where
+    updateByMaybe Nothing ent acc = acc =. ent ^. acc
+    updateByMaybe (Just x) _ acc  = acc =. val x

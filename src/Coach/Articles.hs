@@ -70,11 +70,11 @@ getArticlesFeed ::
   -> Maybe Int64
   -> Maybe Int64
   -> CoachT m ResponseMultiArticle
-getArticlesFeed (Authenticated user) mlimit moffset = do
+getArticlesFeed (Authenticated User {..}) mlimit moffset = do
   articles <-
     runDb $
     selectArticles
-      (Just $ userUsername user)
+      (Just userUsername)
       True
       Nothing
       Nothing
@@ -120,21 +120,21 @@ postArticleCreateCoach ::
   => AuthResult User
   -> RequestCreateArticle
   -> CoachT m ResponseArticle
-postArticleCreateCoach (Authenticated user) (RequestCreateArticle RequestCreateArticleBody {..}) = do
+postArticleCreateCoach (Authenticated User {..}) (RequestCreateArticle RequestCreateArticleBody {..}) = do
   randgen <- liftIO newStdGen
   let appendage = T.pack $ take 10 $ randomRs ('a', 'z') randgen
       slug = titleDescToSlug reqcrtarticlTitle reqcrtarticlDescription appendage
   articles <-
     runDb $ do
       insertArticle
-        (userUsername user)
+        userUsername
         slug
         reqcrtarticlTitle
         reqcrtarticlDescription
         reqcrtarticlBody
       upsertMaybeTags reqcrtarticlTagList slug
       selectArticles
-        (Just $ userUsername user)
+        (Just userUsername)
         False
         (Just slug)
         Nothing
@@ -143,6 +143,56 @@ postArticleCreateCoach (Authenticated user) (RequestCreateArticle RequestCreateA
         1
         0
   case articles of
-    []  -> throwError err410 {errBody = "Should be created, but now is gone."}
+    []  -> throwError err410 {errBody = "Should be created, but now it's gone."}
     x:_ -> return $ ResponseArticle $ resultQueryToResponseArticle x
 postArticleCreateCoach _ _ = throwError err401
+
+deleteArticleSlugCoach ::
+     MonadIO m
+  => AuthResult User
+  -> Text
+  -> CoachT m NoContent
+deleteArticleSlugCoach (Authenticated User {..}) slug = do
+  users <- runDb $ isArticleAuthor userUsername slug
+  when (null users) $ throwError err401 {errBody = "Not the author or article doesn't exist."}
+  runDb $ deleteArticle slug
+  return NoContent
+deleteArticleSlugCoach _ _ = throwError err401
+
+putArticleSlugCoach ::
+     MonadIO m
+  => AuthResult User
+  -> Text
+  -> RequestUpdateArticle
+  -> CoachT m ResponseArticle
+putArticleSlugCoach (Authenticated User {..}) slug (RequestUpdateArticle req@RequestUpdateArticleBody {..}) = do
+  users <- runDb $ isArticleAuthor userUsername slug
+  when (null users) $
+    throwError err401 {errBody = "Not the author or article doesn't exist."}
+  when (reqUpdateIsEmpty req) $ throwError err422 {errBody = "u wot m8?"}
+  articles <-
+    runDb $ do
+      updateArticle
+        slug
+        requpdtarticbodyTitle
+        requpdtarticbodyDescription
+        requpdtarticbodyBody
+      selectArticles
+        (Just userUsername)
+        False
+        (Just slug)
+        Nothing
+        Nothing
+        Nothing
+        1
+        0
+  case articles of
+    []  -> throwError err410 {errBody = "Should be created, but now it's gone."}
+    x:_ -> return $ ResponseArticle $ resultQueryToResponseArticle x
+putArticleSlugCoach _ _ _ = throwError err401
+
+reqUpdateIsEmpty :: RequestUpdateArticleBody -> Bool
+reqUpdateIsEmpty RequestUpdateArticleBody {..} =
+  isNothing requpdtarticbodyBody
+  && isNothing requpdtarticbodyDescription
+  && isNothing requpdtarticbodyTitle

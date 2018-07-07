@@ -74,6 +74,7 @@ articlesApi authres =
   :<|> postArticleCreateCoach authres
   :<|> deleteArticleSlugCoach authres
   :<|> putArticleSlugCoach authres
+  :<|> getCommentsSlugCoach authres
   :<|> panic ""
 
 articlesServer :: Configuration -> AuthResult User -> Server ArticlesAPI

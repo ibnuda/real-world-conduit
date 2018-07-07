@@ -27,6 +27,7 @@ library
                      , Que.Tags
                      , Que.Users
                      , Que.Articles
+                     , Que.Comments
                      , Coach.Tags
                      , Coach.Users
                      , Coach.Profile

@@ -16,6 +16,7 @@ import           Types
 import           Util
 
 import           Que.Articles
+import           Que.Comments
 
 getArticlesCoach ::
      MonadIO m
@@ -87,33 +88,6 @@ getArticlesFeed (Authenticated User {..}) mlimit moffset = do
       (map resultQueryToResponseArticle articles)
       (length articles)
 getArticlesFeed _ _ _ = throwError err401 {errBody = "Only authenticated user."}
-
-resultQueryToResponseArticle ::
-     ( Entity Article
-     , Entity User
-     , Value (Maybe [Text])
-     , Value Int64
-     , Value Bool
-     , Value Bool)
-  -> ResponseArticleBody
-resultQueryToResponseArticle (entarticle, entauthor, vtags, vfavcounts, vfaving, vfoll) =
-  let Article {..} = entityVal entarticle
-      User {..} = entityVal entauthor
-      tagnames = unValue vtags
-      favcounts = unValue vfavcounts
-      isfavoriting = unValue vfaving
-      isfollowing = unValue vfoll
-   in ResponseArticleBody
-        articleSlug
-        articleTitle
-        articleDescription
-        articleBody
-        tagnames
-        articleCreatedAt
-        articleUpdatedAt
-        isfavoriting
-        favcounts $
-      ResponseProfileBody userUsername userBio userImage isfollowing
 
 postArticleCreateCoach ::
      MonadIO m
@@ -196,3 +170,59 @@ reqUpdateIsEmpty RequestUpdateArticleBody {..} =
   isNothing requpdtarticbodyBody
   && isNothing requpdtarticbodyDescription
   && isNothing requpdtarticbodyTitle
+
+getCommentsSlugCoach ::
+     MonadIO m => AuthResult User -> Text -> CoachT m ResponseMultiComment
+getCommentsSlugCoach authres slug = do
+  marticle <- runDb $ getBy $ UniqueSlug slug
+  when (isNothing marticle) $
+    throwError err404 {errBody = "There's no such thing."}
+  comments <-
+    runDb $ selectComments (userUsername <$> authresToMaybe authres) slug
+  return $ ResponseMultiComment $ map resultQueryToResponseComment comments
+
+postCommentSlugCoach :: MonadIO m => AuthResult User -> Text -> RequestComment -> CoachT m ResponseComment
+postCommentSlugCoach (Authenticated User {..}) slug reqcomment = do
+  marticle <- runDb $ getBy $ UniqueSlug slug
+  when (isNothing marticle) $
+    throwError err404 {errBody = "There's no such thing."}
+  panic ""
+postCommentSlugCoach _ _ _ = throwError err401
+
+resultQueryToResponseComment ::
+     (Entity Comment, Entity User, Value Bool) -> ResponseCommentBody
+resultQueryToResponseComment ((Entity cid Comment {..}), (Entity _ User {..}), (Value isfollowing)) =
+  let commid = fromSqlKey cid
+   in ResponseCommentBody
+        commid
+        commentCreatedAt
+        commentUpdatedAt
+        commentBody
+        (ResponseProfileBody userUsername userBio userImage isfollowing)
+
+resultQueryToResponseArticle ::
+     ( Entity Article
+     , Entity User
+     , Value (Maybe [Text])
+     , Value Int64
+     , Value Bool
+     , Value Bool)
+  -> ResponseArticleBody
+resultQueryToResponseArticle (entarticle, entauthor, vtags, vfavcounts, vfaving, vfoll) =
+  let Article {..} = entityVal entarticle
+      User {..} = entityVal entauthor
+      tagnames = unValue vtags
+      favcounts = unValue vfavcounts
+      isfavoriting = unValue vfaving
+      isfollowing = unValue vfoll
+   in ResponseArticleBody
+        articleSlug
+        articleTitle
+        articleDescription
+        articleBody
+        tagnames
+        articleCreatedAt
+        articleUpdatedAt
+        isfavoriting
+        favcounts $
+      ResponseProfileBody userUsername userBio userImage isfollowing

@@ -28,10 +28,11 @@ authresToMaybe _                 = Nothing
 
 titleDescToSlug :: Text -> Text -> Text -> Text
 titleDescToSlug title desc appendage =
-  smaller title <> "-" <> smaller desc <> "-" <> smaller appendage
-  where
-    smaller sentence =
-      toLower (pack (subRegex (mkRegex "[^a-zA-Z0-9_.]") (unpack sentence) "-"))
+  toSlug title <> "-" <> toSlug desc <> "-" <> toSlug appendage
+
+toSlug :: Text -> Text
+toSlug sentence =
+  toLower (pack (subRegex (mkRegex "[^a-zA-Z0-9_.]") (unpack sentence) "-"))
 
 encodeRespError :: Text -> BL.ByteString
 encodeRespError = encode . ResponseError . ResponseErrorBody

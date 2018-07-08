@@ -4,11 +4,9 @@ module Coach.Articles where
 
 import           Lib.Prelude
 
-import qualified Data.Text           as T
 import           Database.Esqueleto  hiding (isNothing)
 import           Servant
 import           Servant.Auth.Server
-import           System.Random
 
 import           Conf
 import           Model
@@ -96,9 +94,7 @@ postArticleCreateCoach ::
   -> RequestCreateArticle
   -> CoachT m ResponseArticle
 postArticleCreateCoach (Authenticated User {..}) (RequestCreateArticle RequestCreateArticleBody {..}) = do
-  randgen <- liftIO newStdGen
-  let appendage = T.pack $ take 10 $ randomRs ('a', 'z') randgen
-      slug = titleDescToSlug reqcrtarticlTitle reqcrtarticlDescription appendage
+  let slug = toSlug reqcrtarticlTitle
   articles <-
     runDb $ do
       insertArticle
@@ -118,7 +114,10 @@ postArticleCreateCoach (Authenticated User {..}) (RequestCreateArticle RequestCr
         1
         0
   case articles of
-    []  -> throwError err410 {errBody = encodeRespError "Should be created, but now it's gone."}
+    [] ->
+      throwError
+        err410
+          {errBody = encodeRespError "Should be created, but now it's gone."}
     x:_ -> return $ ResponseArticle $ resultQueryToResponseArticle x
 postArticleCreateCoach _ _ =
   throwError err401 {errBody = encodeRespError "Only authenticated user."}

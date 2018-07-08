@@ -235,3 +235,86 @@ updateArticle slug mtitle mdesc mbody = do
   where
     updateByMaybe Nothing ent acc = acc =. ent ^. acc
     updateByMaybe (Just x) _ acc  = acc =. val x
+
+selectCommentByUsernameSlugId ::
+     ( PersistUniqueRead backend
+     , PersistQueryRead backend
+     , BackendCompatible SqlBackend backend
+     , MonadIO m
+     )
+  => Text
+  -> Text
+  -> Key Comment
+  -> ReaderT backend m [Entity Comment]
+selectCommentByUsernameSlugId username slug id = do
+  select $
+    from $ \(user `InnerJoin` comment `InnerJoin` article) -> do
+      on $ article ^. ArticleId ==. comment ^. CommentArticleId
+      on $ user ^. UserId ==. comment ^. CommentUserId
+      where_ $ user ^. UserUsername ==. val username
+      where_ $ article ^. ArticleSlug ==. val slug
+      where_ $ comment ^. CommentId ==. val id
+      return comment
+
+deleteComment ::
+     ( PersistUniqueWrite backend
+     , PersistQueryWrite backend
+     , BackendCompatible SqlBackend backend
+     , MonadIO m
+     )
+  => Key Comment
+  -> ReaderT backend m ()
+deleteComment id =
+  delete $ from $ \comment -> do where_ $ comment ^. CommentId ==. val id
+
+isFavoritingArticle ::
+     ( PersistUniqueRead backend
+     , PersistQueryRead backend
+     , BackendCompatible SqlBackend backend
+     , MonadIO m
+     )
+  => Text
+  -> Text
+  -> ReaderT backend m [Entity Favorited]
+isFavoritingArticle username slug = do
+  select $
+    from $ \(user `InnerJoin` favorited `InnerJoin` article) -> do
+      on $ article ^. ArticleId ==. favorited ^. FavoritedArticleId
+      on $ user ^. UserId ==. favorited ^. FavoritedUserId
+      where_ $ user ^. UserUsername ==. val username
+      where_ $ article ^. ArticleSlug ==. val slug
+      return favorited
+
+insertFavorited ::
+     ( PersistUniqueWrite backend
+     , PersistQueryWrite backend
+     , BackendCompatible SqlBackend backend
+     , MonadIO m
+     )
+  => Text
+  -> Text
+  -> ReaderT backend m ()
+insertFavorited username slug = do
+  insertSelect $
+    from $ \(user, article) -> do
+      where_ $ user ^. UserUsername ==. val username
+      where_ $ article ^. ArticleSlug ==. val slug
+      return $ Favorited <# (user ^. UserId) <&> (article ^. ArticleId)
+
+deleteFavorited ::
+     ( PersistUniqueWrite backend
+     , PersistQueryWrite backend
+     , BackendCompatible SqlBackend backend
+     , MonadIO m
+     )
+  => Text
+  -> Text
+  -> ReaderT backend m ()
+deleteFavorited username slug = do
+  delete $ from $ \favorited -> do
+    where_ $ exists $
+      from $ \(user, article) -> do
+        where_ $ favorited ^. FavoritedUserId ==. user ^. UserId
+        where_ $ favorited ^. FavoritedArticleId ==. article ^. ArticleId
+        where_ $ user ^. UserUsername ==. val username
+        where_ $ article ^. ArticleSlug ==. val slug

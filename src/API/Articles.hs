@@ -57,11 +57,11 @@ type ArticlesAPI =
   :<|> "articles"
     :> Capture "slug" Text
     :> "favorite"
-    :> PostNoContent '[ JSON] NoContent
+    :> PostNoContent '[ JSON] ResponseArticle
   :<|> "articles"
     :> Capture "slug" Text
     :> "favorite"
-    :> DeleteNoContent '[ JSON] NoContent
+    :> DeleteNoContent '[ JSON] ResponseArticle
 
 articlesProxy :: Proxy ArticlesAPI
 articlesProxy = Proxy
@@ -75,7 +75,10 @@ articlesApi authres =
   :<|> deleteArticleSlugCoach authres
   :<|> putArticleSlugCoach authres
   :<|> getCommentsSlugCoach authres
-  :<|> panic ""
+  :<|> postCommentSlugCoach authres
+  :<|> deleteCommentSlugIdCoach authres
+  :<|> postFavoriteArticleCoach authres
+  :<|> deleteFavoriteArticleCoach authres
 
 articlesServer :: Configuration -> AuthResult User -> Server ArticlesAPI
 articlesServer conf authres =

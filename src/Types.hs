@@ -183,3 +183,15 @@ data ResponseTags = ResponseTags
   } deriving (Generic)
 instance ToJSON ResponseTags where
   toJSON = genericToJSON (aesonPrefix camelCase)
+
+data ResponseErrorBody = ResponseErrorBody
+  { resperrbodyBody :: Text
+  } deriving (Generic)
+instance ToJSON ResponseErrorBody where
+  toJSON = genericToJSON (aesonPrefix camelCase)
+
+data ResponseError = ResponseError
+  { resperrErrors :: ResponseErrorBody
+  } deriving (Generic)
+instance ToJSON ResponseError where
+  toJSON = genericToJSON (aesonPrefix camelCase)

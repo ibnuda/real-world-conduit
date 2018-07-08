@@ -2,7 +2,7 @@
 {-# LANGUAGE RecordWildCards  #-}
 module Coach.Users where
 
-import           Protolude
+import           Lib.Prelude
 
 import           Crypto.BCrypt
 import           Data.ByteString.Char8 (pack)
@@ -48,7 +48,8 @@ postRegistrationCoach (RequestRegistration reqreg) = do
       existings <- runDb (selectUserByUsernameEmail username email)
       case existings of
         [] -> return ()
-        _  -> throwError err409 { errBody = "User already exists."}
+        _ ->
+          throwError err409 {errBody = encodeRespError "User already exists."}
 
 generateToken ::
      MonadIO m
@@ -76,7 +77,7 @@ postLoginCoach (RequestLogin (RequestLoginBody email password)) = do
     (validatePassword
        ((pack . unpack) (userPassword user))
        ((pack . unpack) (password))) $
-    throwError err401 {errBody = "No such thing."}
+    throwError err401 {errBody = encodeRespError "No such thing."}
   token <- generateToken user
   return $
     ResponseUser $
@@ -87,7 +88,8 @@ postLoginCoach (RequestLogin (RequestLoginBody email password)) = do
       (userBio user)
       (userImage user)
   where
-    notFoundIfNothing Nothing = throwError err401 {errBody = "No such thing."}
+    notFoundIfNothing Nothing =
+      throwError err401 {errBody = encodeRespError "No such thing."}
     notFoundIfNothing (Just x) = return x
 
 getUserInformationCoach :: MonadIO m => AuthResult User -> CoachT m ResponseUser
@@ -101,11 +103,12 @@ getUserInformationCoach (Authenticated user) = do
       (userUsername user)
       (userBio user)
       (userImage user)
-getUserInformationCoach _                    = throwError err401
+getUserInformationCoach _ =
+  throwError err401 {errBody = encodeRespError "Not qualified to access"}
 
 putUserInformationCoach :: MonadIO m => AuthResult User -> RequestUpdateUser -> CoachT m ResponseUser
 putUserInformationCoach (Authenticated _) (RequestUpdateUser (RequestUpdateUserBody Nothing Nothing Nothing Nothing Nothing)) =
-  throwError err422 { errBody = "What are you going to update?"}
+  throwError err422 { errBody = encodeRespError "What are you going to update?"}
 putUserInformationCoach (Authenticated user) (RequestUpdateUser requpdate) = do
   let newUsernameEmail old (Just x) =
         if old == x
@@ -118,7 +121,7 @@ putUserInformationCoach (Authenticated user) (RequestUpdateUser requpdate) = do
         newUsernameEmail (userEmail user) (requpdtuserbodyEmail requpdate)
   existings <-
     runDb $ selectUserByMaybeUsernameEmail perhapsnewusername perhapsnewemail
-  unless (null existings) $ throwError err409 {errBody = "Already used."}
+  unless (null existings) $ throwError err409 {errBody = encodeRespError "Already used."}
   runDb $
     updateUser
       (userUsername user)
@@ -138,4 +141,5 @@ putUserInformationCoach (Authenticated user) (RequestUpdateUser requpdate) = do
       (userUsername u)
       (userBio u)
       (userImage u)
-putUserInformationCoach _ _ = throwError err401
+putUserInformationCoach _ _ =
+  throwError err401 {errBody = encodeRespError "Not allowed to access."}

@@ -6,6 +6,7 @@ module Que.Comments where
 
 import           Lib.Prelude        hiding (from, get, on, (<&>))
 
+import           Data.Time
 import           Database.Esqueleto
 
 import           Model
@@ -40,3 +41,42 @@ selectComments musername slug = do
       where_ $ article ^. ArticleSlug ==. val slug
       orderBy [asc (comment ^. CommentId)]
       return (comment, commentator, following musername)
+
+insertComment ::
+     ( BaseBackend backend ~ SqlBackend
+     , MonadIO m
+     , BackendCompatible SqlBackend backend
+     , PersistQueryRead backend
+     , PersistUniqueRead backend
+     , PersistStoreWrite backend
+     )
+  => Text
+  -> Text
+  -> Text
+  -> ReaderT backend m (Maybe (Entity Comment, Entity User, Value Bool))
+insertComment username slug body = do
+  now <- liftIO getCurrentTime
+  something <-
+    select $
+    from $ \(user, article) -> do
+      let narcissticprick Nothing = val False
+          narcissticprick (Just uname) =
+            case_
+              [ when_
+                  (exists $
+                   from $ \(u, f) -> do
+                     where_ $ u ^. UserId ==. f ^. FollowFollowerId
+                     where_ $ u ^. UserId ==. f ^. FollowAuthorId
+                     where_ $ u ^. UserUsername ==. val uname)
+                  then_ $
+                val True
+              ]
+              (else_ $ val False)
+      where_ $ user ^. UserUsername ==. val username
+      where_ $ article ^. ArticleSlug ==. val slug
+      return (article ^. ArticleId, user, narcissticprick (Just username))
+  case something of
+    [] -> return Nothing
+    (articleid, entuser, valfollow):_ -> do
+      comment <- insertEntity $ Comment body now Nothing (unValue articleid) (entityKey entuser)
+      return $ Just (comment, entuser, valfollow)

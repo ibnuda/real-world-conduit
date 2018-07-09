@@ -22,5 +22,4 @@ getTagsCoach :: MonadIO m => CoachT m ResponseTags
 getTagsCoach = do
   tags <- runDb selectTags
   return (resptags tags)
-  where
-    resptags xs = ResponseTags $ map (tagName . entityVal) xs
+  where resptags xs = ResponseTags $ map (tagName . entityVal) xs

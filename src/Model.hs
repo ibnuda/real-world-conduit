@@ -86,10 +86,7 @@ instance FromJWT User
 doMigration :: SqlPersistT IO ()
 doMigration = runMigration migrateEverything
 
-runDb ::
-     (MonadIO m, MonadReader Configuration m)
-  => SqlPersistT IO b
-  -> m b
+runDb :: (MonadIO m, MonadReader Configuration m) => SqlPersistT IO b -> m b
 runDb q = do
   pool <- asks configurationPool
   liftIO $ runSqlPool q pool

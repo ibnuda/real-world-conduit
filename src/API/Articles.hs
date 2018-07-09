@@ -69,16 +69,16 @@ articlesProxy = Proxy
 articlesApi :: MonadIO m => AuthResult User -> ServerT ArticlesAPI (CoachT m)
 articlesApi authres =
   getArticlesCoach authres
-  :<|> getArticlesFeed authres
-  :<|> getArticleSlugCoach authres
-  :<|> postArticleCreateCoach authres
-  :<|> deleteArticleSlugCoach authres
-  :<|> putArticleSlugCoach authres
-  :<|> getCommentsSlugCoach authres
-  :<|> postCommentSlugCoach authres
-  :<|> deleteCommentSlugIdCoach authres
-  :<|> postFavoriteArticleCoach authres
-  :<|> deleteFavoriteArticleCoach authres
+    :<|> getArticlesFeed authres
+    :<|> getArticleSlugCoach authres
+    :<|> postArticleCreateCoach authres
+    :<|> deleteArticleSlugCoach authres
+    :<|> putArticleSlugCoach authres
+    :<|> getCommentsSlugCoach authres
+    :<|> postCommentSlugCoach authres
+    :<|> deleteCommentSlugIdCoach authres
+    :<|> postFavoriteArticleCoach authres
+    :<|> deleteFavoriteArticleCoach authres
 
 articlesServer :: Configuration -> AuthResult User -> Server ArticlesAPI
 articlesServer conf authres =

@@ -14,10 +14,8 @@ import           Types
 
 generatePassword :: Text -> IO Text
 generatePassword password = do
-  mpass <-
-    hashPasswordUsingPolicy
-      slowerBcryptHashingPolicy
-      (BC.pack $ unpack password)
+  mpass <- hashPasswordUsingPolicy slowerBcryptHashingPolicy
+                                   (BC.pack $ unpack password)
   case mpass of
     Nothing -> generatePassword password
     Just pa -> return (decodeUtf8 pa)

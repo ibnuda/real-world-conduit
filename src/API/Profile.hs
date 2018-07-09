@@ -29,11 +29,12 @@ type UserProfileAPI =
     :> "follow"
     :> DeleteNoContent '[ JSON] NoContent
 
-userProfileApi :: MonadIO m => AuthResult User -> ServerT UserProfileAPI (CoachT m)
+userProfileApi
+  :: MonadIO m => AuthResult User -> ServerT UserProfileAPI (CoachT m)
 userProfileApi authres =
   getUserProfileCoach authres
-  :<|> postUserFollowCoach authres
-  :<|> deleteUserFollowCoach authres
+    :<|> postUserFollowCoach authres
+    :<|> deleteUserFollowCoach authres
 
 userProfileProxy :: Proxy UserProfileAPI
 userProfileProxy = Proxy

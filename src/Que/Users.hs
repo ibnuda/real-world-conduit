@@ -14,8 +14,8 @@ import           Database.Esqueleto
 import           Model
 import           Util
 
-selectFollowsByUsernameAndProfilename ::
-     ( MonadIO m
+selectFollowsByUsernameAndProfilename
+  :: ( MonadIO m
      , BackendCompatible SqlBackend backend
      , PersistQueryRead backend
      , PersistUniqueRead backend
@@ -24,30 +24,28 @@ selectFollowsByUsernameAndProfilename ::
   -> Text
   -> ReaderT backend m [(Entity User, Value Bool)]
 selectFollowsByUsernameAndProfilename (Just username) profilename = do
-  select $
-    from $ \profile -> do
-      let isfollowing =
-            case_
-              [ when_
-                  (exists $
-                   from $ \(user, follows) -> do
-                     where_ (follows ^. FollowFollowerId ==. user ^. UserId)
-                     where_ (follows ^. FollowAuthorId ==. profile ^. UserId)
-                     where_ (user ^. UserUsername ==. val username)
-                     where_ (profile ^. UserUsername ==. val profilename))
-                  then_ $ val True
-              ]
-              (else_ $ val False)
-      where_ (profile ^. UserUsername ==. val profilename)
-      return (profile, isfollowing)
+  select $ from $ \profile -> do
+    let isfollowing = case_
+          [ when_
+                ( exists $ from $ \(user, follows) -> do
+                  where_ $ follows ^. FollowFollowerId ==. user ^. UserId
+                  where_ $ follows ^. FollowAuthorId ==. profile ^. UserId
+                  where_ $ user ^. UserUsername ==. val username
+                  where_ $ profile ^. UserUsername ==. val profilename
+                )
+                then_
+              $ val True
+          ]
+          (else_ $ val False)
+    where_ $ profile ^. UserUsername ==. val profilename
+    return (profile, isfollowing)
 selectFollowsByUsernameAndProfilename Nothing profilename = do
-  select $
-    from $ \profile -> do
-      where_ (profile ^. UserUsername ==. val profilename)
-      return (profile, val False)
+  select $ from $ \profile -> do
+    where_ $ profile ^. UserUsername ==. val profilename
+    return (profile, val False)
 
-selectFollows ::
-     ( PersistUniqueRead backend
+selectFollows
+  :: ( PersistUniqueRead backend
      , PersistQueryRead backend
      , BackendCompatible SqlBackend backend
      , MonadIO m
@@ -56,16 +54,15 @@ selectFollows ::
   -> Text
   -> ReaderT backend m [Entity Follow]
 selectFollows username profilename = do
-  select $
-    from $ \(user `InnerJoin` follow `InnerJoin` profile) -> do
-      on (follow ^. FollowAuthorId ==. profile ^. UserId)
-      on (follow ^. FollowFollowerId ==. user ^. UserId)
-      where_ (user ^. UserUsername ==. val username)
-      where_ (profile ^. UserUsername ==. val profilename)
-      return follow
+  select $ from $ \(user `InnerJoin` follow `InnerJoin` profile) -> do
+    on $ follow ^. FollowAuthorId ==. profile ^. UserId
+    on $ follow ^. FollowFollowerId ==. user ^. UserId
+    where_ $ user ^. UserUsername ==. val username
+    where_ $ profile ^. UserUsername ==. val profilename
+    return follow
 
-insertFollows ::
-     ( PersistUniqueWrite backend
+insertFollows
+  :: ( PersistUniqueWrite backend
      , PersistQueryWrite backend
      , BackendCompatible SqlBackend backend
      , MonadIO m
@@ -74,14 +71,13 @@ insertFollows ::
   -> Text
   -> ReaderT backend m ()
 insertFollows username profilename = do
-  insertSelect $
-    from $ \(user, profile) -> do
-      where_ (user ^. UserUsername ==. val username)
-      where_ (profile ^. UserUsername ==. val profilename)
-      return $ Follow <# (user ^. UserId) <&> (profile ^. UserId)
+  insertSelect $ from $ \(user, profile) -> do
+    where_ $ user ^. UserUsername ==. val username
+    where_ $ profile ^. UserUsername ==. val profilename
+    return $ Follow <# (user ^. UserId) <&> (profile ^. UserId)
 
-deleteFollows ::
-     ( PersistUniqueWrite backend
+deleteFollows
+  :: ( PersistUniqueWrite backend
      , PersistQueryWrite backend
      , BackendCompatible SqlBackend backend
      , MonadIO m
@@ -90,18 +86,15 @@ deleteFollows ::
   -> Text
   -> ReaderT backend m ()
 deleteFollows username profilename = do
-  delete $
-    from $ \follows -> do
-      where_ $
-        exists $
-        from $ \(user, profile) -> do
-          where_ (follows ^. FollowAuthorId ==. profile ^. UserId)
-          where_ (follows ^. FollowFollowerId ==. user ^. UserId)
-          where_ (user ^. UserUsername ==. val username)
-          where_ (profile ^. UserUsername ==. val profilename)
+  delete $ from $ \follows -> do
+    where_ $ exists $ from $ \(user, profile) -> do
+      where_ $ follows ^. FollowAuthorId ==. profile ^. UserId
+      where_ $ follows ^. FollowFollowerId ==. user ^. UserId
+      where_ $ user ^. UserUsername ==. val username
+      where_ $ profile ^. UserUsername ==. val profilename
 
-selectUserByUsernameEmail ::
-     ( PersistUniqueRead backend
+selectUserByUsernameEmail
+  :: ( PersistUniqueRead backend
      , PersistQueryRead backend
      , BackendCompatible SqlBackend backend
      , MonadIO m
@@ -110,15 +103,18 @@ selectUserByUsernameEmail ::
   -> Text
   -> ReaderT backend m [Entity User]
 selectUserByUsernameEmail username email = do
-  select $
-    from $ \user -> do
-      where_
-        (user ^. UserUsername ==. val username
-         ||. user ^. UserEmail ==. val email)
-      return user
+  select $ from $ \user -> do
+    where_
+      $   user
+      ^.  UserUsername
+      ==. val username
+      ||. user
+      ^.  UserEmail
+      ==. val email
+    return user
 
-selectUserByMaybeUsernameEmail ::
-     ( PersistUniqueRead backend
+selectUserByMaybeUsernameEmail
+  :: ( PersistUniqueRead backend
      , PersistQueryRead backend
      , BackendCompatible SqlBackend backend
      , MonadIO m
@@ -127,26 +123,24 @@ selectUserByMaybeUsernameEmail ::
   -> Maybe Text
   -> ReaderT backend m [Entity User]
 selectUserByMaybeUsernameEmail musername memail = do
-  select $
-    from $ \user -> do
-      where_ (whereBuilderOr musername user UserUsername
-              ||. whereBuilderOr memail user UserEmail)
-      return user
-  where
-    whereBuilderOr Nothing _ _              = val False
-    whereBuilderOr (Just x) entity accessor = entity ^. accessor ==. val x
+  select $ from $ \user -> do
+    where_
+      (   whereBuilderOr musername user UserUsername
+      ||. whereBuilderOr memail    user UserEmail
+      )
+    return user
+ where
+  whereBuilderOr Nothing  _      _        = val False
+  whereBuilderOr (Just x) entity accessor = entity ^. accessor ==. val x
 
-insertUserEntity ::
-     ( BaseBackend backend ~ SqlBackend
-     , MonadIO m
-     , PersistStoreWrite backend
-     )
+insertUserEntity
+  :: (BaseBackend backend ~ SqlBackend, MonadIO m, PersistStoreWrite backend)
   => User
   -> ReaderT backend m (Entity User)
 insertUserEntity user = insertEntity user
 
-updateUser ::
-     MonadIO m
+updateUser
+  :: MonadIO m
   => Text
   -> Maybe Text
   -> Maybe Text
@@ -159,13 +153,13 @@ updateUser username memail musername mpassword mimage mbio = do
   update $ \user -> do
     set
       user
-      [ updateByMaybe memail user UserEmail
-      , updateByMaybe musername user UserUsername
+      [ updateByMaybe memail     user UserEmail
+      , updateByMaybe musername  user UserUsername
       , updateByMaybe mpassword' user UserPassword
       , UserImage =. val mimage
       , UserBio =. val mbio
       ]
-    where_ (user ^. UserUsername ==. val username)
-  where
-    updateByMaybe (Just x) _ accessor     = accessor =. val x
-    updateByMaybe Nothing entity accessor = accessor =. entity ^. accessor
+    where_ $ user ^. UserUsername ==. val username
+ where
+  updateByMaybe (Just x) _      accessor = accessor =. val x
+  updateByMaybe Nothing  entity accessor = accessor =. entity ^. accessor

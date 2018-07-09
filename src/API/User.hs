@@ -26,21 +26,19 @@ type UserInformationAPI =
     :> ReqBody '[ JSON] RequestUpdateUser
     :> Put '[ JSON] ResponseUser
 
-userInformationApi ::
-     MonadIO m => AuthResult User -> ServerT UserInformationAPI (CoachT m)
+userInformationApi
+  :: MonadIO m => AuthResult User -> ServerT UserInformationAPI (CoachT m)
 userInformationApi authres =
   getUserInformationCoach authres :<|> putUserInformationCoach authres
 
 userInformationProxy :: Proxy UserInformationAPI
 userInformationProxy = Proxy
 
-userInformationServer ::
-     Configuration -> AuthResult User -> Server UserInformationAPI
-userInformationServer conf authres =
-  hoistServer
-    userInformationProxy
-    (coachToHandler conf)
-    (userInformationApi authres)
+userInformationServer
+  :: Configuration -> AuthResult User -> Server UserInformationAPI
+userInformationServer conf authres = hoistServer userInformationProxy
+                                                 (coachToHandler conf)
+                                                 (userInformationApi authres)
 
 type UserAdministrationAPI =
   "users"
@@ -58,8 +56,6 @@ userAdministrationProxy :: Proxy UserAdministrationAPI
 userAdministrationProxy = Proxy
 
 userAdministrationServer :: Configuration -> Server UserAdministrationAPI
-userAdministrationServer conf =
-  hoistServer
-    userAdministrationProxy
-    (coachToHandler conf)
-    userAdministrationApi
+userAdministrationServer conf = hoistServer userAdministrationProxy
+                                            (coachToHandler conf)
+                                            userAdministrationApi
